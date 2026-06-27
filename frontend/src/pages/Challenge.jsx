@@ -3,18 +3,31 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { getChallenge, getHint, submitAttack, validateDefender, completeChallenge } from '../api/challenges'
 import AttackPanel from '../components/AttackPanel'
 import DefenderMode from '../components/DefenderMode'
+import InstructionsPanel from '../components/InstructionsPanel'
 import { toast } from 'react-hot-toast'
 import {
   ArrowLeft, Shield, Terminal, Code, Lightbulb,
-  ChevronDown, ChevronUp, CheckCircle, Target
+  ChevronDown, ChevronUp, CheckCircle, Target, BookOpen, Zap
 } from 'lucide-react'
+
+const DIFF_CONFIG = {
+  beginner:     { color: '#00ff88', rgb: '0,255,136',   bg: 'rgba(0,255,136,0.1)',   border: 'rgba(0,255,136,0.3)'   },
+  intermediate: { color: '#ffd700', rgb: '255,215,0',   bg: 'rgba(255,215,0,0.1)',   border: 'rgba(255,215,0,0.3)'   },
+  advanced:     { color: '#ff6b6b', rgb: '255,107,107', bg: 'rgba(255,107,107,0.1)', border: 'rgba(255,107,107,0.3)' },
+}
+
+const MODES = [
+  { id: 'instructions', label: 'Instructions', icon: BookOpen,  color: '#00d4ff' },
+  { id: 'attack',       label: 'Attack',       icon: Target,    color: '#00ff88' },
+  { id: 'defend',       label: 'Defend',       icon: Shield,    color: '#a855f7' },
+]
 
 export default function Challenge() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [challenge, setChallenge] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [mode, setMode] = useState('attack') // 'attack' | 'defend'
+  const [mode, setMode] = useState('instructions') // default → Instructions
   const [solved, setSolved] = useState(false)
   const [hintsRevealed, setHintsRevealed] = useState([])
   const [showHints, setShowHints] = useState(false)
@@ -38,7 +51,7 @@ export default function Challenge() {
   const handleRevealHint = async (level) => {
     if (hintsRevealed.includes(level)) return
     try {
-      const res = await getHint(id, level)
+      await getHint(id, level)
       setHintsRevealed(prev => [...prev, level])
       toast(`💡 Hint ${level} revealed`, { icon: '💡' })
     } catch {}
@@ -46,11 +59,9 @@ export default function Challenge() {
 
   const handleAttackResult = async (result) => {
     setAttackResult(result)
-    if (result.success) {
+    if (result && result.success) {
       setSolved(true)
-      try {
-        await completeChallenge(id, { hintsUsed: hintsRevealed.length })
-      } catch {}
+      try { await completeChallenge(id, { hintsUsed: hintsRevealed.length }) } catch {}
       toast.success(`🎉 Challenge solved! +${challenge.xp} XP`, { duration: 5000 })
     }
   }
@@ -58,113 +69,138 @@ export default function Challenge() {
   if (loading) {
     return (
       <div className="pt-24 flex items-center justify-center min-h-screen">
-        <div className="text-neon-green font-mono animate-pulse">Loading challenge...</div>
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-neon-green border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <div className="text-gray-500 font-mono text-sm">Loading challenge...</div>
+        </div>
       </div>
     )
   }
 
   if (!challenge) return null
 
-  const diffColors = {
-    beginner: { text: 'text-neon-green', bg: 'rgba(0,255,136,0.1)', border: 'rgba(0,255,136,0.3)' },
-    intermediate: { text: 'text-neon-yellow', bg: 'rgba(255,215,0,0.1)', border: 'rgba(255,215,0,0.3)' },
-    advanced: { text: 'text-neon-red', bg: 'rgba(255,68,68,0.1)', border: 'rgba(255,68,68,0.3)' },
-  }
-  const dc = diffColors[challenge.difficulty] || diffColors.beginner
+  const dc = DIFF_CONFIG[challenge.difficulty] || DIFF_CONFIG.beginner
+  const catIcons = { hashing: '🔓', bruteforce: '⚡', jwt: '🔑', otp: '📱', session: '🍪' }
 
   return (
     <div className="pt-16 min-h-screen">
-      {/* Header */}
-      <div className="border-b border-dark-border bg-dark-card/50 backdrop-blur-xl sticky top-16 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4 flex-wrap">
+      {/* ── Sticky header ────────────────────────────────────────────── */}
+      <div className="border-b border-dark-border bg-dark-card/80 backdrop-blur-xl sticky top-16 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Top row */}
+          <div className="flex items-center gap-3 py-3 flex-wrap">
             <button
               onClick={() => navigate('/')}
-              className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors text-sm font-mono"
+              className="flex items-center gap-1.5 text-gray-500 hover:text-white transition-colors text-sm font-mono"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
             </button>
 
-            <div className="flex items-center gap-3 flex-1 flex-wrap">
-              <span className="text-gray-600 font-mono text-sm">#{String(challenge.id).padStart(2, '0')}</span>
-              <h1 className="text-white font-bold text-lg">{challenge.name}</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold uppercase"
-                style={{ color: dc.text.replace('text-', ''), background: dc.bg, border: `1px solid ${dc.border}` }}>
-                {challenge.difficulty}
-              </span>
-              {solved && (
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono text-neon-green"
-                  style={{ background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)' }}>
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  SOLVED
-                </span>
-              )}
-            </div>
+            <div className="w-px h-4 bg-dark-border" />
 
-            {/* Mode toggle */}
-            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
-              <button
-                onClick={() => setMode('attack')}
-                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-mono transition-all ${
-                  mode === 'attack'
-                    ? 'bg-neon-green/10 text-neon-green border-r border-neon-green/20'
-                    : 'text-gray-500 hover:text-white'
-                }`}
-              >
-                <Target className="w-3.5 h-3.5" />
-                Attack
-              </button>
-              <button
-                onClick={() => setMode('defend')}
-                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-mono transition-all ${
-                  mode === 'defend'
-                    ? 'bg-neon-purple/10 text-neon-purple'
-                    : 'text-gray-500 hover:text-white'
-                }`}
-              >
-                <Shield className="w-3.5 h-3.5" />
-                Defend
-              </button>
+            <span className="text-xs font-mono text-gray-600">#{String(challenge.id).padStart(2, '0')}</span>
+            <span className="text-xl">{catIcons[challenge.category] || '🔒'}</span>
+            <h1 className="text-white font-bold text-base">{challenge.name}</h1>
+
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold uppercase"
+              style={{ color: dc.color, background: dc.bg, border: `1px solid ${dc.border}` }}>
+              {challenge.difficulty}
+            </span>
+
+            {solved && (
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono text-neon-green ml-1"
+                style={{ background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)' }}>
+                <CheckCircle className="w-3.5 h-3.5" />
+                SOLVED
+              </span>
+            )}
+
+            <div className="ml-auto flex items-center gap-1.5 text-xs font-mono text-gray-600">
+              <Zap className="w-3.5 h-3.5 text-neon-yellow" />
+              {challenge.xp} XP
             </div>
+          </div>
+
+          {/* Mode tabs */}
+          <div className="flex border-t border-dark-border">
+            {MODES.map(({ id: modeId, label, icon: Icon, color }) => (
+              <button
+                key={modeId}
+                onClick={() => setMode(modeId)}
+                className={`flex items-center gap-2 px-5 py-3 text-sm font-mono font-semibold border-b-2 transition-all duration-200 ${
+                  mode === modeId
+                    ? 'border-current'
+                    : 'border-transparent text-gray-500 hover:text-gray-300'
+                }`}
+                style={mode === modeId ? { color, borderColor: color } : {}}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+                {modeId === 'instructions' && mode !== 'instructions' && !solved && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-neon-blue animate-pulse" />
+                )}
+                {modeId === 'attack' && solved && (
+                  <CheckCircle className="w-3.5 h-3.5 text-neon-green" />
+                )}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* ── Main layout ───────────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left sidebar — challenge info */}
+
+          {/* ── Left sidebar ─────────────────────────────────────── */}
           <div className="space-y-4">
-            {/* Description */}
+            {/* Challenge brief */}
             <div className="glass-card rounded-xl p-5">
-              <h2 className="text-white font-semibold mb-3 flex items-center gap-2">
+              <h2 className="text-white font-semibold mb-3 flex items-center gap-2 text-sm">
                 <Terminal className="w-4 h-4 text-neon-green" />
                 Challenge Brief
               </h2>
               <p className="text-gray-400 text-sm leading-relaxed">{challenge.description}</p>
 
-              <div className="mt-4 p-3 rounded-lg" style={{ background: 'rgba(0,212,255,0.05)', border: '1px solid rgba(0,212,255,0.15)' }}>
-                <div className="text-xs font-mono text-gray-500 mb-1">Auth Flaw</div>
-                <div className="text-neon-blue font-mono text-sm font-semibold">{challenge.flaw}</div>
-              </div>
-
-              <div className="mt-3 p-3 rounded-lg" style={{ background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.15)' }}>
-                <div className="text-xs font-mono text-gray-500 mb-1">You'll Learn</div>
-                <div className="text-neon-purple font-mono text-sm">{challenge.learning}</div>
+              <div className="mt-4 space-y-2">
+                <div className="p-3 rounded-lg" style={{ background: 'rgba(0,212,255,0.05)', border: '1px solid rgba(0,212,255,0.15)' }}>
+                  <div className="text-xs font-mono text-gray-500 mb-1">Auth Flaw</div>
+                  <div className="text-neon-blue font-mono text-sm font-semibold">{challenge.flaw}</div>
+                </div>
+                <div className="p-3 rounded-lg" style={{ background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.15)' }}>
+                  <div className="text-xs font-mono text-gray-500 mb-1">You'll Learn</div>
+                  <div className="text-neon-purple font-mono text-xs leading-relaxed">{challenge.learning}</div>
+                </div>
               </div>
             </div>
 
-            {/* XP reward */}
-            <div className="glass-card rounded-xl p-4 flex items-center gap-3">
-              <div className="text-2xl">⚡</div>
-              <div>
-                <div className="text-white font-bold font-mono">{challenge.xp} XP</div>
-                <div className="text-gray-600 text-xs">Reward for solving</div>
+            {/* Progress indicator */}
+            <div className="glass-card rounded-xl p-4">
+              <div className="text-xs font-mono text-gray-500 uppercase tracking-wider mb-3">Your Progress</div>
+              <div className="flex items-center gap-3">
+                {MODES.map(({ id: modeId, label, icon: Icon, color }) => (
+                  <button
+                    key={modeId}
+                    onClick={() => setMode(modeId)}
+                    className="flex-1 flex flex-col items-center gap-1.5 p-2.5 rounded-lg transition-all hover:bg-white/5"
+                    style={mode === modeId ? { background: `rgba(${
+                      color === '#00d4ff' ? '0,212,255' :
+                      color === '#00ff88' ? '0,255,136' : '168,85,247'
+                    },0.08)` } : {}}
+                  >
+                    <Icon className="w-4 h-4" style={{ color: mode === modeId ? color : '#6b7280' }} />
+                    <span className="text-xs font-mono" style={{ color: mode === modeId ? color : '#6b7280' }}>
+                      {label}
+                    </span>
+                    {modeId === 'attack' && solved && (
+                      <div className="w-4 h-4 rounded-full bg-neon-green/20 flex items-center justify-center">
+                        <CheckCircle className="w-2.5 h-2.5 text-neon-green" />
+                      </div>
+                    )}
+                  </button>
+                ))}
               </div>
-              {solved && (
-                <div className="ml-auto text-neon-green text-xs font-mono">+{challenge.xp} EARNED</div>
-              )}
             </div>
 
             {/* Hints */}
@@ -205,18 +241,35 @@ export default function Challenge() {
                 </div>
               )}
             </div>
+
+            {/* XP reward */}
+            <div className="glass-card rounded-xl p-4 flex items-center gap-3">
+              <div className="text-2xl">⚡</div>
+              <div className="flex-1">
+                <div className="text-white font-bold font-mono">{challenge.xp} XP</div>
+                <div className="text-gray-600 text-xs">Base reward for solving</div>
+              </div>
+              {solved && (
+                <div className="text-neon-green text-xs font-mono font-bold">EARNED ✓</div>
+              )}
+            </div>
           </div>
 
-          {/* Main panel */}
+          {/* ── Main panel ───────────────────────────────────────── */}
           <div className="lg:col-span-2">
-            {mode === 'attack' ? (
+            {mode === 'instructions' && (
+              <InstructionsPanel challenge={challenge} />
+            )}
+            {mode === 'attack' && (
               <AttackPanel
                 challenge={challenge}
                 onResult={handleAttackResult}
                 solved={solved}
                 attackResult={attackResult}
+                onGoInstructions={() => setMode('instructions')}
               />
-            ) : (
+            )}
+            {mode === 'defend' && (
               <DefenderMode challenge={challenge} />
             )}
           </div>

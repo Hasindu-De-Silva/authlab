@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { submitAttack } from '../api/challenges'
 import { toast } from 'react-hot-toast'
-import { Send, RotateCcw, CheckCircle, XCircle, Terminal, Eye, EyeOff } from 'lucide-react'
+import { Send, RotateCcw, CheckCircle, XCircle, Terminal, Eye, EyeOff, BookOpen, AlertCircle } from 'lucide-react'
 
 // Challenge-specific attack UI configs
 const ATTACK_FORMS = {
@@ -56,50 +57,72 @@ const ATTACK_FORMS = {
   },
 }
 
-function ResponseViewer({ result }) {
-  if (!result) return null
+function ResponseViewer({ result, onGoInstructions }) {
+  if (!result) {
+    return (
+      <div className="mt-4 rounded-xl p-4 flex items-start gap-3 cursor-pointer group"
+        style={{ background: 'rgba(0,212,255,0.04)', border: '1px dashed rgba(0,212,255,0.2)' }}
+        onClick={onGoInstructions}>
+        <BookOpen className="w-4 h-4 text-neon-blue flex-shrink-0 mt-0.5" />
+        <div>
+          <div className="text-neon-blue text-xs font-mono font-semibold mb-0.5">Not sure where to start?</div>
+          <div className="text-gray-600 text-xs font-mono">Read the Instructions tab for a step-by-step guide ↗</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className={`terminal-window rounded-xl mt-4 overflow-hidden border ${
-      result.success
-        ? 'border-neon-green/30'
-        : 'border-red-500/30'
-    }`}>
+    <div className={`terminal-window rounded-xl mt-4 overflow-hidden ${
+      result.success ? 'border-neon-green/30' : 'border-red-500/30'
+    }`} style={{ border: `1px solid ${result.success ? 'rgba(0,255,136,0.3)' : 'rgba(255,68,68,0.3)'}` }}>
       <div className="terminal-header">
-        <div className={`terminal-dot ${result.success ? 'bg-green-500' : 'bg-red-500'}`} />
+        <div className={`terminal-dot ${result.success ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
         <div className="terminal-dot bg-yellow-500" />
         <div className="terminal-dot bg-gray-600" />
         <span className="ml-3 text-gray-500 text-xs font-mono">Server Response</span>
-        <span className={`ml-auto text-xs font-mono px-2 py-0.5 rounded ${
-          result.success ? 'text-neon-green bg-neon-green/10' : 'text-red-400 bg-red-400/10'
+        <span className={`ml-auto text-xs font-mono font-bold px-2.5 py-0.5 rounded-full ${
+          result.success
+            ? 'text-neon-green bg-neon-green/10 border border-neon-green/20'
+            : 'text-red-400 bg-red-400/10 border border-red-400/20'
         }`}>
-          {result.statusCode || (result.success ? 200 : 401)}
+          HTTP {result.statusCode || (result.success ? '200 OK' : '401 Unauthorized')}
         </span>
       </div>
       <div className="p-4">
         {result.success ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-neon-green font-mono text-sm">
-              <CheckCircle className="w-4 h-4" />
-              <span className="font-bold">ATTACK SUCCESSFUL</span>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-neon-green font-mono text-sm font-bold">
+              <CheckCircle className="w-5 h-5" />
+              ATTACK SUCCESSFUL
             </div>
-            <div className="text-gray-400 font-mono text-xs mt-2 leading-relaxed">
+            <p className="text-gray-300 font-mono text-xs leading-relaxed border-l-2 border-neon-green/30 pl-3">
               {result.message}
-            </div>
+            </p>
             {result.data && (
-              <pre className="mt-3 text-xs text-gray-300 bg-dark-bg/50 rounded-lg p-3 overflow-auto code-scroll">
-                {JSON.stringify(result.data, null, 2)}
-              </pre>
+              <div>
+                <div className="text-xs font-mono text-gray-600 mb-1.5">Response data:</div>
+                <pre className="text-xs text-gray-300 bg-dark-bg/60 rounded-lg p-3 overflow-auto code-scroll">
+                  {JSON.stringify(result.data, null, 2)}
+                </pre>
+              </div>
             )}
+            <div className="text-xs font-mono text-neon-green/60 border-t border-dark-border pt-2">
+              → Switch to Defender Mode to learn how to fix this vulnerability
+            </div>
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-red-400 font-mono text-sm">
+            <div className="flex items-center gap-2 text-red-400 font-mono text-sm font-bold">
               <XCircle className="w-4 h-4" />
-              <span className="font-bold">{result.message || 'Attack failed'}</span>
+              {result.message || 'Attack failed — try a different approach'}
             </div>
             {result.hint && (
-              <div className="mt-2 text-gray-500 font-mono text-xs">{result.hint}</div>
+              <div className="mt-2 flex items-start gap-2 p-3 rounded-lg"
+                style={{ background: 'rgba(255,215,0,0.05)', border: '1px solid rgba(255,215,0,0.15)' }}>
+                <AlertCircle className="w-3.5 h-3.5 text-neon-yellow flex-shrink-0 mt-0.5" />
+                <span className="text-neon-yellow text-xs font-mono leading-relaxed">{result.hint}</span>
+              </div>
             )}
           </div>
         )}
@@ -108,7 +131,7 @@ function ResponseViewer({ result }) {
   )
 }
 
-export default function AttackPanel({ challenge, onResult, solved, attackResult }) {
+export default function AttackPanel({ challenge, onResult, solved, attackResult, onGoInstructions }) {
   const config = ATTACK_FORMS[challenge.id] || ATTACK_FORMS[1]
   const [fields, setFields] = useState({})
   const [loading, setLoading] = useState(false)
@@ -254,7 +277,7 @@ export default function AttackPanel({ challenge, onResult, solved, attackResult 
       </div>
 
       {/* Response */}
-      <ResponseViewer result={attackResult} />
+      <ResponseViewer result={attackResult} onGoInstructions={onGoInstructions} />
     </div>
   )
 }
