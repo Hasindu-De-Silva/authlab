@@ -45,27 +45,27 @@ function TerminalHero() {
   }, [currentLine, currentChar])
 
   return (
-    <div className="terminal-window rounded-xl overflow-hidden">
+    <div className="terminal-window rounded-xl overflow-hidden"
+      style={{ border: '1px solid rgba(0,229,255,0.2)', boxShadow: '0 0 40px rgba(0,229,255,0.06)' }}>
       <div className="terminal-header">
         <div className="terminal-dot bg-red-500" />
         <div className="terminal-dot bg-yellow-500" />
-        <div className="terminal-dot bg-green-500" />
+        <div className="terminal-dot" style={{ background: '#00e5ff' }} />
         <span className="ml-3 text-gray-500 text-xs font-mono">authlab ~ bash</span>
+        <span className="ml-auto text-xs font-mono px-2 py-0.5 rounded" style={{ color: '#00e5ff', background: 'rgba(0,229,255,0.08)' }}>LIVE</span>
       </div>
       <div className="p-5 min-h-[160px]">
         {lines.map((line, i) => (
-          <div key={i} className={`font-mono text-sm mb-1 ${
-            i === lines.length - 1 && !done ? 'text-neon-green' : 'text-gray-400'
-          }`}>
-            <span className={i < 4 ? 'text-neon-blue' : 'text-neon-green'}>{line}</span>
+          <div key={i} className={`font-mono text-sm mb-1`}>
+            <span style={{ color: i === lines.length - 1 && !done ? '#00e5ff' : i < 4 ? '#2979ff' : '#00e5ff' }}>{line}</span>
             {i === currentLine && !done && (
-              <span className="animate-pulse text-neon-green ml-0.5">█</span>
+              <span className="animate-pulse ml-0.5" style={{ color: '#00e5ff' }}>█</span>
             )}
           </div>
         ))}
         {done && (
           <div className="mt-3 flex items-center gap-2">
-            <span className="text-neon-green font-mono text-sm">$ </span>
+            <span className="font-mono text-sm" style={{ color: '#00e5ff' }}>$ </span>
             <span className="text-gray-300 font-mono text-sm cursor-blink">choose your target</span>
           </div>
         )}
