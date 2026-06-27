@@ -352,7 +352,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-neon-green" />
-            <span className="text-gray-500 font-mono text-sm">AuthLab © 2025</span>
+            <span className="text-gray-500 font-mono text-sm">AuthLab © 2026</span>
           </div>
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-yellow-500" />
